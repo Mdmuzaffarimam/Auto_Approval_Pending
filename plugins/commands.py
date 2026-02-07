@@ -1,22 +1,23 @@
 ```python
 import asyncio
-from pyrogram import Client, filters
-from config import LOG_CHANNEL, API_ID, API_HASH, NEW_REQ_MODE
-from plugins.database import db
+from pyrogram import Client, filters, enums
+from pyrogram.errors import FloodWait
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# ================= LOG TEXT =================
+from config import LOG_CHANNEL, API_ID, API_HASH, NEW_REQ_MODE
+from plugins.database import db
 
+
+# ---------------- LOG ---------------- #
 LOG_TEXT = """<b>#NewUser
-    
-ID - <code>{}</code>
 
-Nᴀᴍᴇ - {}</b>
+ID - <code>{}</code>
+Name - {}</b>
 """
 
-# ================= START =================
 
-@Client.on_message(filters.command('start') & filters.private)
+# ---------------- START ---------------- #
+@Client.on_message(filters.command("start"))
 async def start_message(c, m):
 
     if not await db.is_user_exist(m.from_user.id):
@@ -28,46 +29,78 @@ async def start_message(c, m):
 
     await m.reply_photo(
         "https://te.legra.ph/file/119729ea3cdce4fefb6a1.jpg",
-        caption=(
-            f"<b>Hello {m.from_user.mention} 👋\n\n"
-            "I Am Join Request Acceptor Bot.\n"
-            "I Can Accept All Old Pending Join Request.\n\n"
-            "👉 Use /accept in Channel</b>"
-        ),
+        caption=f"""<b>Hello {m.from_user.mention} 👋
+
+I Am Join Request Acceptor Bot.
+
+Accept Old Requests → /accept</b>""",
         reply_markup=InlineKeyboardMarkup(
             [
                 [
                     InlineKeyboardButton(
-                        '💝 sᴜʙsᴄʀɪʙᴇ ᴍʏ ᴄʜᴀɴɴᴇʟ',
-                        url='https://t.me/Mrn_Officialx'
+                        "💝 Subscribe Channel",
+                        url="https://t.me/Mrn_Officialx"
                     )
                 ],
                 [
                     InlineKeyboardButton(
-                        "❣️ ᴅᴇᴠᴇʟᴏᴘᴇʀ",
-                        url='https://t.me/mimam_officialx'
+                        "❣️ Developer",
+                        url="https://t.me/mimam_officialx"
                     ),
                     InlineKeyboardButton(
-                        "🌷 ᴜᴘᴅᴀᴛᴇ",
-                        url='https://t.me/+u6qe756hjylkNmE1'
+                        "🌷 Update",
+                        url="https://t.me/+u6qe756hjylkNmE1"
                     )
                 ]
             ]
         )
     )
 
-# ================= ACCEPT OLD REQUESTS =================
 
-@Client.on_message(filters.command('accept') & (filters.channel | filters.group))
+# ---------------- ACCEPT FUNCTION ---------------- #
+async def approve_requests(acc, chat_id, msg):
+
+    total = 0
+
+    while True:
+        try:
+            await acc.approve_all_chat_join_requests(chat_id)
+
+        except FloodWait as e:
+            await asyncio.sleep(e.value)
+
+        await asyncio.sleep(1)
+
+        join_requests = [
+            req async for req in
+            acc.get_chat_join_requests(chat_id)
+        ]
+
+        total += len(join_requests)
+
+        await msg.edit(
+            f"**Processing…**\nAccepted: `{total}`"
+        )
+
+        if not join_requests:
+            break
+
+    await msg.edit(
+        f"**✅ Done! Accepted All Requests**\n\nTotal: `{total}`"
+    )
+
+
+# ---------------- /ACCEPT ---------------- #
+@Client.on_message(filters.command("accept") & filters.private)
 async def accept(client, message):
 
-    show = await message.reply("**Please Wait.....**")
+    show = await message.reply("**Please Wait…**")
 
-    # Get user session
     user_data = await db.get_session(message.from_user.id)
+
     if user_data is None:
         return await show.edit(
-            "**First Login In Bot PM Using /login**"
+            "**Login First Using /login**"
         )
 
     # Login user account
@@ -79,49 +112,78 @@ async def accept(client, message):
             api_hash=API_HASH
         )
         await acc.connect()
-    except:
+
+    except Exception:
         return await show.edit(
-            "**Session Expired.\nLogout & Login Again.**"
+            "**Session Expired → Login Again**"
         )
 
-    chat_id = message.chat.id
+    # -------- COMMAND ARGUMENT -------- #
+    if len(message.command) > 1:
 
-    msg = await show.edit(
-        "**Accepting all pending join requests...**"
+        ids = message.text.split()[1:]
+
+        msg = await show.edit("**Processing IDs…**")
+
+        for x in ids:
+            try:
+                chat_id = int(x)
+                await approve_requests(acc, chat_id, msg)
+
+            except Exception as e:
+                await message.reply(
+                    f"Failed For `{x}` → {e}"
+                )
+
+        return
+
+    # -------- ASK INPUT -------- #
+    await show.edit(
+        "**Send Channel ID / Multiple IDs\n"
+        "Or Forward Message From Channel**"
     )
 
-    try:
-        while True:
+    vj = await client.listen(message.chat.id)
 
-            await acc.approve_all_chat_join_requests(chat_id)
-            await asyncio.sleep(1)
+    chat_ids = []
 
-            join_requests = [
-                req async for req in
-                acc.get_chat_join_requests(chat_id)
-            ]
+    # Forward
+    if (
+        vj.forward_from_chat
+        and vj.forward_from_chat.type
+        not in [enums.ChatType.PRIVATE, enums.ChatType.BOT]
+    ):
+        chat_ids.append(vj.forward_from_chat.id)
 
-            if not join_requests:
-                break
+    # Text IDs
+    elif vj.text:
+        for x in vj.text.split():
+            try:
+                chat_ids.append(int(x))
+            except:
+                pass
 
-        await msg.edit(
-            "**✅ Successfully Accepted All Pending Requests.**"
-        )
+    else:
+        return await message.reply("Invalid Input")
 
-    except Exception as e:
-        await msg.edit(f"**Error:** `{str(e)}`")
+    await vj.delete()
 
-# ================= AUTO ACCEPT NEW =================
+    msg = await show.edit("**Starting Approval…**")
 
+    for chat_id in chat_ids:
+        await approve_requests(acc, chat_id, msg)
+
+
+# ---------------- AUTO APPROVE NEW ---------------- #
 @Client.on_chat_join_request(filters.group | filters.channel)
-async def approve_new(client, m):
+async def auto_approve(client, m):
 
-    if NEW_REQ_MODE == False:
+    if NEW_REQ_MODE is False:
         return
 
     try:
-        # Save user in DB
         if not await db.is_user_exist(m.from_user.id):
+
             await db.add_user(
                 m.from_user.id,
                 m.from_user.first_name
@@ -135,23 +197,20 @@ async def approve_new(client, m):
                 )
             )
 
-        # Approve request
         await client.approve_chat_join_request(
             m.chat.id,
             m.from_user.id
         )
 
-        # Welcome message
         try:
             await client.send_message(
                 m.from_user.id,
-                f"**Hello {m.from_user.mention}!\n"
-                f"Welcome To {m.chat.title}\n\n"
-                "__Powered By : @Mrn_Officialx__**"
+                f"""**Hello {m.from_user.mention}
+Welcome To {m.chat.title}**"""
             )
         except:
             pass
 
     except Exception as e:
-        print(str(e))
+        print(e)
 ```
