@@ -1,4 +1,3 @@
-```python
 import asyncio
 from pyrogram import Client, filters, enums
 from pyrogram.errors import FloodWait
@@ -213,4 +212,3 @@ Welcome To {m.chat.title}**"""
 
     except Exception as e:
         print(e)
-```
