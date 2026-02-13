@@ -8,16 +8,9 @@ BOT_TOKEN = environ.get("BOT_TOKEN", "")
 LOG_CHANNEL = int(environ.get("LOG_CHANNEL", "-1002154224937"))
 ADMINS = int(environ.get("ADMINS", "6139759254"))
 
-# Database
-# ⚠️ Deploy server env me DB_URI dena — repo me mat rakhna
-DB_URI = environ.get(
-    "DB_URI",
-    "mongodb+srv://mohammadmuzaffarimambaturbari:sHXNxpKZ9PDjyYQr@cluster0.dqjjo.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-)
+# Warning - Give Db uri in deploy server environment variable, don't give in repo.
+DB_URI = environ.get("DB_URI", "mongodb+srv://mohammadmuzaffarimambaturbari:sHXNxpKZ9PDjyYQr@cluster0.dqjjo.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0") # Warning - Give Db uri in deploy server environment variable, don't give in repo.
 DB_NAME = environ.get("DB_NAME", "vjjoinrequetbot")
 
-# Join request mode
-NEW_REQ_MODE = environ.get("NEW_REQ_MODE", "True") == "True"
-
-# ✅ PORT Added (for Koyeb / Heroku / Render health check)
-PORT = int(environ.get("PORT", 8080))
+# If this is True Then Bot Accept New Join Request 
+NEW_REQ_MODE = bool(environ.get('NEW_REQ_MODE', True))
