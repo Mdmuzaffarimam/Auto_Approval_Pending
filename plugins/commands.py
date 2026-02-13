@@ -1,3 +1,4 @@
+python
 import asyncio
 from pyrogram import Client, filters, enums
 from pyrogram.errors import FloodWait
@@ -59,49 +60,33 @@ Accept Old Requests → /accept</b>""",
 # ---------------- ACCEPT FUNCTION ---------------- #
 async def approve_requests(acc, chat_id, msg):
 
-    # -------- COUNT BEFORE APPROVE -------- #
-    requests = [
-        req async for req in
-        acc.get_chat_join_requests(chat_id)
-    ]
+    total = 0
 
-    total = len(requests)
-
-    if total == 0:
-        return await msg.edit(
-            "**No Pending Join Requests Found.**"
-        )
-
-    await msg.edit(
-        f"**Found {total} Pending Requests…**\nApproving Now…"
-    )
-
-    approved = 0
-
-    for req in requests:
+    while True:
         try:
-            await acc.approve_chat_join_request(
-                chat_id,
-                req.user.id
-            )
-
-            approved += 1
-
-            if approved % 10 == 0:
-                await msg.edit(
-                    f"**Approved:** `{approved}/{total}`"
-                )
+            await acc.approve_all_chat_join_requests(chat_id)
 
         except FloodWait as e:
             await asyncio.sleep(e.value)
 
-        except Exception:
-            pass
+        await asyncio.sleep(1)
+
+        join_requests = [
+            req async for req in
+            acc.get_chat_join_requests(chat_id)
+        ]
+
+        total += len(join_requests)
+
+        await msg.edit(
+            f"**Processing…**\nAccepted: `{total}`"
+        )
+
+        if not join_requests:
+            break
 
     await msg.edit(
-        f"""**✅ Done! Accepted All Requests**
-
-Total Approved: `{approved}`"""
+        f"**✅ Done! Accepted All Requests**\n\nTotal: `{total}`"
     )
 
 
