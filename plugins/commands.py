@@ -27,7 +27,7 @@ async def start_message(c, m):
         )
 
     await m.reply_photo(
-        "https://te.legra.ph/file/119729ea3cdce4fefb6a1.jpg",
+        "https://graph.org/file/1a6f1d849376d47c1f305-5b83907d2bd289b0af.jpg",
         caption=f"""<b>Hello {m.from_user.mention} 👋
 
 I Am Join Request Acceptor Bot.
