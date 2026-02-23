@@ -1,8 +1,9 @@
 import motor.motor_asyncio
 from config import DB_NAME, DB_URI
 
+
 class Database:
-    
+
     def __init__(self, uri, database_name):
         self._client = motor.motor_asyncio.AsyncIOMotorClient(uri)
         self.db = self._client[database_name]
@@ -10,20 +11,20 @@ class Database:
 
     def new_user(self, id, name):
         return dict(
-            id = id,
-            name = name,
-            session = None,
+            id=id,
+            name=name,
+            session=None,
         )
-    
+
     async def add_user(self, id, name):
-    user = await self.col.find_one({'id': int(id)})
-    if not user:
-        await self.col.insert_one(self.new_user(id, name))
-    
+        user = await self.col.find_one({'id': int(id)})
+        if not user:
+            await self.col.insert_one(self.new_user(id, name))
+
     async def is_user_exist(self, id):
-        user = await self.col.find_one({'id':int(id)})
+        user = await self.col.find_one({'id': int(id)})
         return bool(user)
-    
+
     async def total_users_count(self):
         count = await self.col.count_documents({})
         return count
@@ -35,10 +36,16 @@ class Database:
         await self.col.delete_many({'id': int(user_id)})
 
     async def set_session(self, id, session):
-        await self.col.update_one({'id': int(id)}, {'$set': {'session': session}})
+        await self.col.update_one(
+            {'id': int(id)},
+            {'$set': {'session': session}}
+        )
 
     async def get_session(self, id):
         user = await self.col.find_one({'id': int(id)})
-        return user['session']
+        if user:
+            return user.get('session')
+        return None
+
 
 db = Database(DB_URI, DB_NAME)
