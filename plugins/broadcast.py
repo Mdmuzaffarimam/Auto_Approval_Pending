@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+# =========================
+# SAFE BROADCAST FUNCTION
+# =========================
 async def broadcast_messages(user_id, message):
     try:
         await message.copy(chat_id=user_id)
@@ -22,32 +25,35 @@ async def broadcast_messages(user_id, message):
 
     except InputUserDeactivated:
         await db.delete_user(int(user_id))
-        logger.info(f"{user_id} - Deleted Account Removed")
         return "Deleted"
 
     except UserIsBlocked:
         await db.delete_user(int(user_id))
-        logger.info(f"{user_id} - Blocked Bot")
         return "Blocked"
 
     except PeerIdInvalid:
         await db.delete_user(int(user_id))
-        logger.info(f"{user_id} - PeerIdInvalid Removed")
         return "Error"
 
     except Exception as e:
-        logger.error(f"Broadcast Error to {user_id}: {e}")
+        logger.error(f"Error sending to {user_id}: {e}")
         return "Error"
 
 
+# =========================
+# BROADCAST COMMAND
+# =========================
 @Client.on_message(filters.command("broadcast") & filters.user(ADMINS) & filters.reply)
 async def broadcast_handler(bot, message):
 
     users = await db.get_all_users()
     total_users = await db.total_users_count()
 
+    if total_users == 0:
+        return await message.reply_text("❌ No users in database.")
+
     b_msg = message.reply_to_message
-    sts = await message.reply_text("🚀 Broadcasting started...")
+    sts = await message.reply_text("🚀 Broadcast Started...")
 
     start_time = time.time()
 
@@ -78,10 +84,8 @@ async def broadcast_handler(bot, message):
 
         done += 1
 
-        # 🔥 Rate limit safety
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.05)  # Rate limit protection
 
-        # Update progress every 25 users
         if done % 25 == 0:
             await sts.edit(
                 f"📢 Broadcast In Progress...\n\n"
@@ -103,4 +107,54 @@ async def broadcast_handler(bot, message):
         f"🚫 Blocked: {blocked}\n"
         f"🗑 Deleted: {deleted}\n"
         f"❌ Failed: {failed}"
+    )
+
+
+# =========================
+# STATS COMMAND
+# =========================
+@Client.on_message(filters.command("stats") & filters.user(ADMINS))
+async def stats_handler(bot, message):
+
+    total_users = await db.total_users_count()
+
+    await message.reply_text(
+        f"📊 Bot Statistics\n\n"
+        f"👥 Total Users In Database: {total_users}\n\n"
+        f"ℹ️ Real active users = Success count during broadcast"
+    )
+
+
+# =========================
+# CLEAN DATABASE COMMAND
+# =========================
+@Client.on_message(filters.command("clean") & filters.user(ADMINS))
+async def clean_database(bot, message):
+
+    users = await db.get_all_users()
+    sts = await message.reply_text("🧹 Checking users...")
+
+    removed = 0
+    checked = 0
+
+    async for user in users:
+        user_id = user.get("id")
+        if not user_id:
+            continue
+
+        try:
+            await bot.get_users(int(user_id))
+        except:
+            await db.delete_user(int(user_id))
+            removed += 1
+
+        checked += 1
+
+        if checked % 25 == 0:
+            await sts.edit(f"🔍 Checked: {checked}\n🗑 Removed: {removed}")
+
+    await sts.edit(
+        f"✅ Clean Completed!\n\n"
+        f"🔍 Total Checked: {checked}\n"
+        f"🗑 Total Removed: {removed}"
     )
