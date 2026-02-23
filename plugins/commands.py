@@ -29,15 +29,29 @@ async def start_message(c, m):
     bot_username = (await c.get_me()).username
 
     await m.reply_photo(
-        "https://graph.org/file/1a6f1d849376d47c1f305-5b83907d2bd289b0af.jpg",
-        caption=f"""<b>Hello {m.from_user.mention} Welcome to @PendingXBot:
+    "https://graph.org/file/1a6f1d849376d47c1f305-5b83907d2bd289b0af.jpg",
+    caption=caption,
+    parse_mode=enums.ParseMode.HTML,
+    reply_markup=InlineKeyboardMarkup([...])
+),
+        caption=f"""<b>✨ Welcome {m.from_user.mention} ✨</b>
 
-➥ Accept New Join Requests
-➥ Accept Pending Join Requests
+━━━━━━━━━━━━━━━━━━━
+<b>🤖 PendingX Join Request Bot</b>
+━━━━━━━━━━━━━━━━━━━
 
-📌 How to Get Started:
-<blockquote>Step 1: Add bot to your channel or group.</a></blockquote>
-<blockquote>Step 2: Click the Requests → /accept action button.</b></a></blockquote>""",
+<blockquote>✅ Accept New Join Requests Instantly</blockquote>
+<blockquote>🕒 Approve All Pending Requests Easily</blockquote>
+
+<b>📌 How To Get Started:</b>
+
+<blockquote>➊ Add me to your Channel or Group</blockquote>
+<blockquote>➋ Give Admin Rights (Invite Users Permission)</blockquote>
+<blockquote>➌ Use /accept to approve requests</blockquote>
+
+━━━━━━━━━━━━━━━━━━━
+<b>🚀 Fast • Secure • Automatic</b>
+""",
         reply_markup=InlineKeyboardMarkup(
             [
                 [
