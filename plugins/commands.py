@@ -26,15 +26,32 @@ async def start_message(c, m):
             LOG_TEXT.format(m.from_user.id, m.from_user.mention)
         )
 
+    bot_username = (await c.get_me()).username
+
     await m.reply_photo(
         "https://graph.org/file/1a6f1d849376d47c1f305-5b83907d2bd289b0af.jpg",
-        caption=f"""<b>Hello {m.from_user.mention} 👋
+        caption=f"""<b>Hello {m.from_user.mention} Welcome to @PendingXBot:
 
-I Am Join Request Acceptor Bot.
+➥ Accept New Join Requests
+➥ Accept Pending Join Requests
 
-Accept Old Requests → /accept</b>""",
+📌 How to Get Started:
+<blockquote>Step 1: Add bot to your channel or group.</a></blockquote>
+<blockquote>Step 2: Click the Requests → /accept action button.</b></a></blockquote>""",
         reply_markup=InlineKeyboardMarkup(
             [
+                [
+                    InlineKeyboardButton(
+                        "➕ Add Me To Your Channel",
+                        url=f"https://t.me/{bot_username}?startchannel=true"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "➕ Add Me To Your Group",
+                        url=f"https://t.me/{bot_username}?startgroup=true"
+                    )
+                ],
                 [
                     InlineKeyboardButton(
                         "💝 Subscribe Channel",
