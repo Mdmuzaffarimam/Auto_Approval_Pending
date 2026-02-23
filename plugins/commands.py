@@ -43,7 +43,7 @@ async def start_message(c, m):
 """
 
     await m.reply_photo(
-        "https://graph.org/file/1a6f1d849376d47c1f305-5b83907d2bd289b0af.jpg",
+        "https://graph.org/file/74f3b07e680826de251ee-11c68075c29d2227d5.jpg",
         caption=caption,
         parse_mode=enums.ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(
