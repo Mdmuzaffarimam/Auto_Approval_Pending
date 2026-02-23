@@ -28,13 +28,7 @@ async def start_message(c, m):
 
     bot_username = (await c.get_me()).username
 
-    await m.reply_photo(
-    "https://graph.org/file/1a6f1d849376d47c1f305-5b83907d2bd289b0af.jpg",
-    caption=caption,
-    parse_mode=enums.ParseMode.HTML,
-    reply_markup=InlineKeyboardMarkup([...])
-),
-        caption=f"""<b>✨ Welcome {m.from_user.mention} ✨</b>
+    caption = f"""<b>✨ Welcome {m.from_user.mention} ✨</b>
 
 ━━━━━━━━━━━━━━━━━━━
 <b>🤖 PendingX Join Request Bot</b>
@@ -51,7 +45,12 @@ async def start_message(c, m):
 
 ━━━━━━━━━━━━━━━━━━━
 <b>🚀 Fast • Secure • Automatic</b>
-""",
+"""
+
+    await m.reply_photo(
+        "https://graph.org/file/1a6f1d849376d47c1f305-5b83907d2bd289b0af.jpg",
+        caption=caption,
+        parse_mode=enums.ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(
             [
                 [
