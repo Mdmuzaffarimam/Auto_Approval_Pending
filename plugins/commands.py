@@ -7,24 +7,54 @@ from config import LOG_CHANNEL, API_ID, API_HASH, NEW_REQ_MODE
 from plugins.database import db
 
 
-# ---------------- LOG ---------------- #
-LOG_TEXT = """<b>#NewUser
+# ================= LOG SYSTEM ================= #
 
-ID - <code>{}</code>
-Name - {}</b>
-"""
+async def send_log(client, message, action_type=None, extra_info=None):
+    try:
+        user = message.from_user
+        user_mention = f"[{user.first_name}](tg://user?id={user.id})"
+
+        log_text = f"📝 **New Bot Activity**\n"
+        log_text += f"👤 **User:** {user_mention}\n"
+        log_text += f"🆔 **User ID:** `{user.id}`\n"
+
+        if action_type == "start":
+            log_text += "📱 **Action:** Started the bot\n"
+
+        elif action_type == "approve":
+            log_text += "📱 **Action:** Approved pending requests\n"
+
+        elif action_type == "auto":
+            log_text += "📱 **Action:** Auto Approved Join Request\n"
+            log_text += f"💬 **Chat:** {message.chat.title}\n"
+            log_text += f"🆔 **Chat ID:** `{message.chat.id}`\n"
+
+        if extra_info:
+            log_text += f"\nℹ️ **Extra:** {extra_info}\n"
+
+        await client.send_message(
+            LOG_CHANNEL,
+            log_text,
+            parse_mode=enums.ParseMode.MARKDOWN
+        )
+
+    except FloodWait as e:
+        await asyncio.sleep(e.value)
+        await client.send_message(
+            LOG_CHANNEL,
+            log_text,
+            parse_mode=enums.ParseMode.MARKDOWN
+        )
 
 
-# ---------------- START ---------------- #
+# ================= START ================= #
+
 @Client.on_message(filters.command("start"))
 async def start_message(c, m):
 
     if not await db.is_user_exist(m.from_user.id):
         await db.add_user(m.from_user.id, m.from_user.first_name)
-        await c.send_message(
-            LOG_CHANNEL,
-            LOG_TEXT.format(m.from_user.id, m.from_user.mention)
-        )
+        await send_log(c, m, "start")
 
     bot_username = (await c.get_me()).username
 
@@ -81,7 +111,8 @@ async def start_message(c, m):
     )
 
 
-# ---------------- ACCEPT FUNCTION ---------------- #
+# ================= APPROVE FUNCTION ================= #
+
 async def approve_requests(acc, chat_id, msg):
 
     total = 0
@@ -114,7 +145,8 @@ async def approve_requests(acc, chat_id, msg):
     )
 
 
-# ---------------- /ACCEPT ---------------- #
+# ================= /ACCEPT ================= #
+
 @Client.on_message(filters.command("accept") & filters.private)
 async def accept(client, message):
 
@@ -123,11 +155,8 @@ async def accept(client, message):
     user_data = await db.get_session(message.from_user.id)
 
     if user_data is None:
-        return await show.edit(
-            "**Login First Using /login**"
-        )
+        return await show.edit("**Login First Using /login**")
 
-    # Login user account
     try:
         acc = Client(
             "joinrequest",
@@ -138,30 +167,24 @@ async def accept(client, message):
         await acc.connect()
 
     except Exception:
-        return await show.edit(
-            "**Session Expired → Login Again**"
-        )
+        return await show.edit("**Session Expired → Login Again**")
 
-    # -------- COMMAND ARGUMENT -------- #
+    await send_log(client, message, "approve")
+
     if len(message.command) > 1:
 
         ids = message.text.split()[1:]
-
         msg = await show.edit("**Processing IDs…**")
 
         for x in ids:
             try:
                 chat_id = int(x)
                 await approve_requests(acc, chat_id, msg)
-
             except Exception as e:
-                await message.reply(
-                    f"Failed For `{x}` → {e}"
-                )
+                await message.reply(f"Failed For `{x}` → {e}")
 
         return
 
-    # -------- ASK INPUT -------- #
     await show.edit(
         "**Send Channel ID / Multiple IDs\n"
         "Or Forward Message From Channel**"
@@ -171,7 +194,6 @@ async def accept(client, message):
 
     chat_ids = []
 
-    # Forward
     if (
         vj.forward_from_chat
         and vj.forward_from_chat.type
@@ -179,14 +201,12 @@ async def accept(client, message):
     ):
         chat_ids.append(vj.forward_from_chat.id)
 
-    # Text IDs
     elif vj.text:
         for x in vj.text.split():
             try:
                 chat_ids.append(int(x))
             except:
                 pass
-
     else:
         return await message.reply("Invalid Input")
 
@@ -198,7 +218,8 @@ async def accept(client, message):
         await approve_requests(acc, chat_id, msg)
 
 
-# ---------------- AUTO APPROVE NEW ---------------- #
+# ================= AUTO APPROVE ================= #
+
 @Client.on_chat_join_request(filters.group | filters.channel)
 async def auto_approve(client, m):
 
@@ -207,24 +228,14 @@ async def auto_approve(client, m):
 
     try:
         if not await db.is_user_exist(m.from_user.id):
-
-            await db.add_user(
-                m.from_user.id,
-                m.from_user.first_name
-            )
-
-            await client.send_message(
-                LOG_CHANNEL,
-                LOG_TEXT.format(
-                    m.from_user.id,
-                    m.from_user.mention
-                )
-            )
+            await db.add_user(m.from_user.id, m.from_user.first_name)
 
         await client.approve_chat_join_request(
             m.chat.id,
             m.from_user.id
         )
+
+        await send_log(client, m, "auto")
 
         try:
             await client.send_message(
