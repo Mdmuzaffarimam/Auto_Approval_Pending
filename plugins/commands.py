@@ -244,12 +244,12 @@ async def auto_approve(client, m):
         try:
             await client.send_message(
                 chat_id=m.from_user.id,
-                text=f"""
+                text=f"""<b>
 <blockquote>Hello {m.from_user.mention}!</blockquote>
 <blockquote>Welcome To {m.chat.title}</blockquote>
 
 <blockquote>Powered By : @Mrn_Officialx</blockquote>
-""",
+"""</b>,
                 parse_mode=enums.ParseMode.HTML
             )
         except Exception:
