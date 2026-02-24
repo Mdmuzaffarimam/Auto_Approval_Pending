@@ -223,38 +223,33 @@ async def accept(client, message):
 @Client.on_chat_join_request(filters.group | filters.channel)
 async def auto_approve(client, m):
 
-    if not NEW_REQ_MODE:
+    if NEW_REQ_MODE is False:
         return
 
     try:
-        # Add user in DB if not exists
         if not await db.is_user_exist(m.from_user.id):
             await db.add_user(m.from_user.id, m.from_user.first_name)
 
-        # Approve join request
         await client.approve_chat_join_request(
-            chat_id=m.chat.id,
-            user_id=m.from_user.id
+            m.chat.id,
+            m.from_user.id
         )
 
-        # Send log
         await send_log(client, m, "auto")
 
-        # Send welcome message in DM (HTML Only)
         try:
             await client.send_message(
-                chat_id=m.from_user.id,
-                text=f"""
+                m.from_user.id,
+                f"""
 <b><blockquote>Hello {m.from_user.mention}!</blockquote>
 <blockquote>Welcome To {m.chat.title}</blockquote>
 
 <blockquote>Powered By : @Mrn_Officialx</blockquote>
 </b>
-""",
-                parse_mode=enums.ParseMode.HTML
+"""
             )
-        except Exception:
+        except:
             pass
 
     except Exception as e:
-        print(f"AUTO APPROVE ERROR: {e}")
+        print(e)
