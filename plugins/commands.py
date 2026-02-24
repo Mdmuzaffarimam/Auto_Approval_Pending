@@ -240,13 +240,8 @@ async def auto_approve(client, m):
         try:
             await client.send_message(
                 m.from_user.id,
-                f"""
-<b><blockquote>Hello {m.from_user.mention}!</blockquote>
-<blockquote>Welcome To {m.chat.title}</blockquote>
-
-<blockquote>Powered By : @Mrn_Officialx</blockquote>
-</b>
-"""
+                f"""**Hello {m.from_user.mention}
+Welcome To {m.chat.title}**"""
             )
         except:
             pass
