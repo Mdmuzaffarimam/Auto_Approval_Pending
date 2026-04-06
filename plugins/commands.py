@@ -32,19 +32,23 @@ async def send_log(client, message, action_type=None, extra_info=None):
         if extra_info:
             log_text += f"\nℹ️ **Extra:** {extra_info}\n"
 
-        await client.send_message(
-            LOG_CHANNEL,
-            log_text,
-            parse_mode=enums.ParseMode.MARKDOWN
-        )
+        # ✅ FIX: log_text ab scope ke andar hai, FloodWait mein bhi accessible
+        try:
+            await client.send_message(
+                LOG_CHANNEL,
+                log_text,
+                parse_mode=enums.ParseMode.MARKDOWN
+            )
+        except FloodWait as e:
+            await asyncio.sleep(e.value)
+            await client.send_message(
+                LOG_CHANNEL,
+                log_text,
+                parse_mode=enums.ParseMode.MARKDOWN
+            )
 
-    except FloodWait as e:
-        await asyncio.sleep(e.value)
-        await client.send_message(
-            LOG_CHANNEL,
-            log_text,
-            parse_mode=enums.ParseMode.MARKDOWN
-        )
+    except Exception as e:
+        print(f"LOG ERROR: {e}")
 
 
 # ================= START ================= #
@@ -114,31 +118,36 @@ async def start_message(c, m):
 # ================= APPROVE FUNCTION ================= #
 
 async def approve_requests(acc, chat_id, msg):
-
     total = 0
+    max_retries = 5  # ✅ FIX: Infinite loop se bachne ke liye retry limit
 
-    while True:
+    for attempt in range(max_retries):
         try:
+            # ✅ FIX: Pehle count karo, phir approve karo — sahi count milega
+            join_requests = [
+                req async for req in acc.get_chat_join_requests(chat_id)
+            ]
+
+            if not join_requests:
+                break  # Koi pending request nahi, loop band karo
+
+            batch_count = len(join_requests)
+            total += batch_count
+
+            await msg.edit(
+                f"**Processing…**\nAccepted: `{total}`"
+            )
+
             await acc.approve_all_chat_join_requests(chat_id)
+            await asyncio.sleep(2)  # Telegram rate limit ke liye thoda wait
 
         except FloodWait as e:
             await asyncio.sleep(e.value)
+            continue
 
-        await asyncio.sleep(1)
-
-        join_requests = [
-            req async for req in
-            acc.get_chat_join_requests(chat_id)
-        ]
-
-        total += len(join_requests)
-
-        await msg.edit(
-            f"**Processing…**\nAccepted: `{total}`"
-        )
-
-        if not join_requests:
-            break
+        except Exception as e:
+            await msg.edit(f"**❌ Error:** `{e}`")
+            return
 
     await msg.edit(
         f"**✅ Done! Accepted All Requests**\n\nTotal: `{total}`"
@@ -157,6 +166,8 @@ async def accept(client, message):
     if user_data is None:
         return await show.edit("**Login First Using /login**")
 
+    acc = None  # ✅ FIX: finally block ke liye bahar define karo
+
     try:
         acc = Client(
             "joinrequest",
@@ -169,53 +180,61 @@ async def accept(client, message):
     except Exception:
         return await show.edit("**Session Expired → Login Again**")
 
-    await send_log(client, message, "approve")
+    try:
+        await send_log(client, message, "approve")
 
-    if len(message.command) > 1:
+        if len(message.command) > 1:
 
-        ids = message.text.split()[1:]
-        msg = await show.edit("**Processing IDs…**")
+            ids = message.text.split()[1:]
+            msg = await show.edit("**Processing IDs…**")
 
-        for x in ids:
-            try:
-                chat_id = int(x)
-                await approve_requests(acc, chat_id, msg)
-            except Exception as e:
-                await message.reply(f"Failed For `{x}` → {e}")
+            for x in ids:
+                try:
+                    chat_id = int(x)
+                    await approve_requests(acc, chat_id, msg)
+                except ValueError:
+                    await message.reply(f"**Invalid ID:** `{x}` — sirf numbers daalein")
+                except Exception as e:
+                    await message.reply(f"Failed For `{x}` → `{e}`")
 
-        return
+            return
 
-    await show.edit(
-        "**Send Channel ID / Multiple IDs\n"
-        "Or Forward Message From Channel**"
-    )
+        await show.edit(
+            "**Send Channel ID / Multiple IDs\n"
+            "Or Forward Message From Channel**"
+        )
 
-    vj = await client.listen(message.chat.id)
+        vj = await client.listen(message.chat.id)
 
-    chat_ids = []
+        chat_ids = []
 
-    if (
-        vj.forward_from_chat
-        and vj.forward_from_chat.type
-        not in [enums.ChatType.PRIVATE, enums.ChatType.BOT]
-    ):
-        chat_ids.append(vj.forward_from_chat.id)
+        if (
+            vj.forward_from_chat
+            and vj.forward_from_chat.type
+            not in [enums.ChatType.PRIVATE, enums.ChatType.BOT]
+        ):
+            chat_ids.append(vj.forward_from_chat.id)
 
-    elif vj.text:
-        for x in vj.text.split():
-            try:
-                chat_ids.append(int(x))
-            except:
-                pass
-    else:
-        return await message.reply("Invalid Input")
+        elif vj.text:
+            for x in vj.text.split():
+                try:
+                    chat_ids.append(int(x))
+                except ValueError:
+                    pass
+        else:
+            return await message.reply("**❌ Invalid Input**")
 
-    await vj.delete()
+        await vj.delete()
 
-    msg = await show.edit("**Starting Approval…**")
+        msg = await show.edit("**Starting Approval…**")
 
-    for chat_id in chat_ids:
-        await approve_requests(acc, chat_id, msg)
+        for chat_id in chat_ids:
+            await approve_requests(acc, chat_id, msg)
+
+    finally:
+        # ✅ FIX: Client hamesha disconnect hoga — memory leak nahi hoga
+        if acc and acc.is_connected:
+            await acc.disconnect()
 
 
 # ================= AUTO APPROVE ================= #
@@ -244,17 +263,26 @@ async def auto_approve(client, m):
         try:
             await client.send_message(
                 chat_id=m.from_user.id,
-                text=f"""
-<b><blockquote>Hello {m.from_user.mention}!</blockquote>
+                text=f"""<b><blockquote>Hello {m.from_user.mention}!</blockquote>
 <blockquote>Welcome To {m.chat.title}</blockquote>
 
 <blockquote>Powered By : @Mrn_Officialx</blockquote>
-</b>
-""",
+</b>""",
                 parse_mode=enums.ParseMode.HTML
             )
         except Exception:
-            pass
+            pass  # User ne bot block kiya hoga, ignore karo
+
+    except FloodWait as e:
+        # ✅ FIX: Auto approve mein bhi FloodWait handle karo
+        await asyncio.sleep(e.value)
+        try:
+            await client.approve_chat_join_request(
+                chat_id=m.chat.id,
+                user_id=m.from_user.id
+            )
+        except Exception as e:
+            print(f"AUTO APPROVE RETRY ERROR: {e}")
 
     except Exception as e:
         print(f"AUTO APPROVE ERROR: {e}")
