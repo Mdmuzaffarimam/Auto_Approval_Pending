@@ -62,13 +62,10 @@ async def start_message(c, m):
 
     bot_username = (await c.get_me()).username
 
-    caption = f"""<b>✨ Welcome {m.from_user.mention} ✨ @PendingXBot Join Request Bot
-
+    caption = f"""<b><blockquote>✨ Welcome {m.from_user.mention} ✨ @PendingXBot Join Request Bot</blockquote>
 <blockquote>✅ Accept New Join Requests Instantly</blockquote>
 <blockquote>🕒 Approve All Pending Requests Easily</blockquote>
-
-📌 How To Get Started:
-
+<blockquote>📌 How To Get Started:</blockquote>
 <blockquote>➊ Add me to your Channel or Group</blockquote>
 <blockquote>➋ Give Admin Rights (Invite Users Permission)</blockquote>
 <blockquote>➌ Use /accept to approve requests</blockquote>
